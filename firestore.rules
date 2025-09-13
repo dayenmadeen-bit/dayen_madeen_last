@@ -1,0 +1,132 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // إعلانات عامة: قراءة عامة، كتابة للمالك فقط (يتطلب تحقق إضافي حسب تطبيقك)
+    // لوحة الإعلانات: قراءة عامة، والكتابة للمشرفين فقط (admins/{uid} موجود)
+    match /announcements/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // مجموعة المشرفين (admin list) لإدارة من يحق له الكتابة على الإعلانات
+    match /admins/{adminUid} {
+      // القراءة اختيارية (يمكن تقييدها)، والكتابة يفضل أن تكون محصورة بمالك التطبيق عبر لوحة التحكم
+      allow read: if request.auth != null && request.auth.uid == adminUid;
+      allow write: if request.auth != null && request.auth.uid == adminUid;
+    }
+    // دوال مساعدة للقواعد
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // المستخدم الحالي يملك وثيقة المستخدم ذات المعرف (userId) إذا كان uid داخل الوثيقة يطابق request.auth.uid
+    function isOwnerByDocId(userId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(userId)) &&
+        get(/databases/$(database)/documents/users/$(userId)).data.uid == request.auth.uid;
+    }
+
+    // هل المستخدم الحالي موظف مفعّل لدى هذا المالك
+    function isAuthorizedEmployeeOf(ownerId) {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(ownerId)/employees/$(request.auth.uid)) &&
+        (
+          // ندعم كلا الحقلين لضمان التوافق
+          get(/databases/$(database)/documents/users/$(ownerId)/employees/$(request.auth.uid)).data.isActive == true ||
+          get(/databases/$(database)/documents/users/$(ownerId)/employees/$(request.auth.uid)).data.enabled == true
+        );
+    }
+
+    // هل المستخدم الحالي هو مالك المنشأة المستهدف أو موظف مخوّل لديه
+    function isOwnerOrAuthorizedEmployee(ownerId) {
+      return isOwnerByDocId(ownerId) || isAuthorizedEmployeeOf(ownerId);
+    }
+
+    // هل المستخدم الحالي يملك الموظف الهدف ضمن منشأته
+    // المالك الحالي (بناءً على uid داخل وثيقته) يستطيع إدارة موظفيه تحت users/{ownerId}/employees
+    function isOwnerOfEmployee(ownerId) {
+      return isOwnerByDocId(ownerId);
+    }
+
+    // قاعدة للمستخدمين - قراءة/كتابة ذاتية فقط على الجذر
+    match /users/{userId} {
+      // السماح للمستخدم (حسب uid المخزن داخل الوثيقة) بقراءة/كتابة وثيقته فقط
+      allow read, write: if isOwnerByDocId(userId);
+
+      // العملاء
+      match /customers/{customerId} {
+        allow read, write: if isOwnerOrAuthorizedEmployee(userId);
+      }
+
+      // الموظفون: وثيقة الموظف تحت مالك المنشأة، يصل لها المالك أو الموظف نفسه
+      match /employees/{employeeUid} {
+        // المالك أو موظف مخوّل يمكنه القراءة؛ الكتابة للمالك فقط
+        allow read: if isOwnerOrAuthorizedEmployee(userId);
+        allow write: if isOwnerOfEmployee(userId);
+      }
+
+      // الديون
+      match /debts/{debtId} {
+        allow read, write: if isOwnerOrAuthorizedEmployee(userId);
+      }
+
+      // المدفوعات
+      match /payments/{paymentId} {
+        allow read, write: if isOwnerOrAuthorizedEmployee(userId);
+      }
+
+      // الإشعارات: المستخدم المستهدف فقط
+      match /notifications/{notificationId} {
+        allow read, write: if isOwnerByDocId(userId);
+      }
+    }
+    
+    // قاعدة للأرقام المميزة - حجز واستخدام معرفات فريدة
+    match /unique_ids/{uniqueId} {
+      // القراءة للمستخدمين الموثقين فقط (للتحقق/الاختبار)
+      allow read: if isAuthenticated();
+      // الكتابة مسموحة فقط إذا تم إنشاؤها عبر معاملة الحجز أو تحديث الوسم
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      // منع الحذف إلا من نفس المنشىء (اختياري)، هنا نمنعه تماماً
+      allow delete: if false;
+    }
+    
+    // قاعدة للعملاء المسجلين - إن كانت مستخدمة لاحقاً
+    match /registered_customers/{customerId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // طلبات المشتريات والدفع (على مستوى الجذر)
+    function canAccessRequest(doc) {
+      return isAuthenticated() && (
+        // المالك (حسب uid في وثيقته) أو موظف مخوّل لدى المالك
+        (doc.data.businessOwnerId != null && isOwnerOrAuthorizedEmployee(doc.data.businessOwnerId)) ||
+        // العميل المرتبط بالطلب
+        (doc.data.customerId != null && request.auth.uid == doc.data.customerId)
+      );
+    }
+
+    function canAccessRequestOnCreate(doc) {
+      return isAuthenticated() && (
+        (doc.businessOwnerId != null && isOwnerOrAuthorizedEmployee(doc.businessOwnerId)) ||
+        (doc.customerId != null && request.auth.uid == doc.customerId)
+      );
+    }
+
+    match /purchase_requests/{requestId} {
+      allow read: if existsAfter(request.resource) ? canAccessRequest(getAfter()) : canAccessRequest(getResource());
+      allow create: if canAccessRequestOnCreate(request.resource.data);
+      allow update, delete: if canAccessRequest(getResource());
+    }
+
+    match /payment_requests/{requestId} {
+      allow read: if existsAfter(request.resource) ? canAccessRequest(getAfter()) : canAccessRequest(getResource());
+      allow create: if canAccessRequestOnCreate(request.resource.data);
+      allow update, delete: if canAccessRequest(getResource());
+    }
+  }
+}
+

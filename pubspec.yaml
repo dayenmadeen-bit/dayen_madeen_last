@@ -1,0 +1,96 @@
+name: dayen_madeen
+description: نظام إدارة الديون الاحترافي
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # إدارة الحالة والتنقل
+  get: ^4.6.6
+  get_storage: ^2.1.1
+
+  # التصميم والواجهة
+  google_fonts: ^6.1.0          # للخطوط العربية (Cairo, Tajawal)
+  flutter_svg: ^2.0.9           # للأيقونات المخصصة SVG
+
+  # المصادقة والأمان
+  local_auth:
+  crypto: ^3.0.3                # تشفير البيانات المحلية
+
+  # الطباعة والتصدير
+  printing: ^5.11.0             # طباعة المستندات
+  share_plus: ^7.2.1            # مشاركة الملفات
+
+  # الرسوم البيانية والتقارير
+  # fl_chart: ^0.64.0             # رسوم بيانية تفاعلية (تم إلغاؤها)
+
+  # قاعدة البيانات والتخزين
+  sqflite: ^2.3.0              # قاعدة بيانات SQLite (مفعّل مؤقتًا حتى اكتمال الترحيل)
+  path: ^1.8.3                 # مسارات الملفات
+  uuid: ^4.1.0                 # معرفات فريدة
+
+  # التحقق والتصديق
+  email_validator: ^2.1.17     # التحقق من البريد الإلكتروني
+
+
+  # التصدير والاستيراد
+  excel: ^2.1.0                # ملفات Excel
+  csv: ^5.0.2                  # ملفات CSV
+  file_picker: ^10.3.2          # اختيار الملفات
+  permission_handler: ^11.1.0  # أذونات النظام
+  path_provider: ^2.1.1        # مسارات النظام
+
+  # معلومات الجهاز
+  device_info_plus: ^9.1.1      # معرف الجهاز الفريد
+  connectivity_plus: ^5.0.2     # فحص حالة الاتصال بالإنترنت
+
+  # أدوات مساعدة
+  intl: ^0.18.1                 # دعم التواريخ والأرقام العربية
+  url_launcher: ^6.2.2          # فتح الروابط والتطبيقات الخارجية
+  image_picker: ^1.0.4          # اختيار الصور
+  pdf: ^3.10.7                  # إنشاء ملفات PDF
+  # أيقونات إضافية
+  cupertino_icons: ^1.0.6       # أيقونات iOS
+
+  # مكتبات إضافية للنظام المركزي
+  flutter_colorpicker: ^1.0.3   # منتقي الألوان (للإعدادات المتقدمة)
+  
+  # Firebase
+  firebase_core: ^3.4.0
+  firebase_auth: ^5.1.4
+  cloud_firestore: ^5.3.0
+  firebase_messaging: ^15.1.3
+  flutter_local_notifications: ^17.2.3
+  
+  # Error tracking and monitoring
+  sentry_flutter: ^8.8.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+  # أدوات التطوير
+  build_runner: ^2.4.7          # لتوليد الكود
+  json_annotation: ^4.8.1       # للتعامل مع JSON
+
+flutter:
+  uses-material-design: true
+
+  # الأصول (Assets)
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/logos/
+    - assets/fonts/
+
+  # الخطوط المخصصة
+  fonts:
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/Cairo-Regular.ttf

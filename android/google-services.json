@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "813225046455",
+    "firebase_url": "https://dayenmadeen-ce109-default-rtdb.firebaseio.com",
+    "project_id": "dayenmadeen-ce109",
+    "storage_bucket": "dayenmadeen-ce109.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:813225046455:android:6d58d005a5446251d0b832",
+        "android_client_info": {
+          "package_name": "com.example.dayen_madeen"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBUNz98PVFsh4bcrG8_sF_6MIjA6mBU-7Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
