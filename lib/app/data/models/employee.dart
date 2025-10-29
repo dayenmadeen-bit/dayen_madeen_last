@@ -1,12 +1,13 @@
 import 'dart:convert';
 import 'package:uuid/uuid.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// أنواع الصلاحيات المتاحة للموظفين
 enum Permission {
   // صلاحيات العملاء
   viewCustomers(
       'view_customers', 'عرض العملاء', 'يمكن للموظف عرض قائمة العملاء'),
-  addCustomers('add_customers', 'إضافة عملاء', 'يمكن للموظف إضافة عملاء جدد'),
+  addCustomers('اdd_customers', 'إضافة عملاء', 'يمكن للموظف إضافة عملاء جدد'),
   editCustomers(
       'edit_customers', 'تعديل العملاء', 'يمكن للموظف تعديل بيانات العملاء'),
   deleteCustomers('delete_customers', 'حذف العملاء', 'يمكن للموظف حذف العملاء'),
@@ -110,6 +111,54 @@ class Employee {
       updatedAt: now,
     );
   }
+
+  // === إضافة Methods المفقودة للتوافق مع Firebase ===
+  
+  /// تحويل إلى Map - 🔧 إصلاح
+  Map<String, dynamic> toMap() {
+    return toJson(); // استخدام toJson الموجود
+  }
+
+  /// إنشاء من Map - 🔧 إصلاح  
+  factory Employee.fromMap(Map<String, dynamic> map) {
+    return Employee.fromJson(map); // استخدام fromJson الموجود
+  }
+  
+  /// إنشاء من Firestore DocumentSnapshot - 🔧 إصلاح
+  factory Employee.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    data['id'] = doc.id; // إضافة id من DocumentSnapshot
+    
+    // معالجة Timestamp إلى DateTime
+    final createdAtRaw = data['created_at'] ?? data['createdAt'];
+    final updatedAtRaw = data['updated_at'] ?? data['updatedAt'];
+    
+    data['created_at'] = _timestampToDateTime(createdAtRaw)?.toIso8601String() ?? DateTime.now().toIso8601String();
+    data['updated_at'] = _timestampToDateTime(updatedAtRaw)?.toIso8601String() ?? DateTime.now().toIso8601String();
+    
+    return Employee.fromMap(data);
+  }
+  
+  /// مساعد لتحويل Timestamp إلى DateTime
+  static DateTime? _timestampToDateTime(dynamic timestampValue) {
+    if (timestampValue == null) return null;
+    
+    if (timestampValue is Timestamp) {
+      return timestampValue.toDate();
+    } else if (timestampValue is String) {
+      try {
+        return DateTime.parse(timestampValue);
+      } catch (e) {
+        return null;
+      }
+    } else if (timestampValue is DateTime) {
+      return timestampValue;
+    }
+    
+    return null;
+  }
+  
+  // === نهاية الإضافة ===
 
   /// تحويل من JSON
   factory Employee.fromJson(Map<String, dynamic> json) {
