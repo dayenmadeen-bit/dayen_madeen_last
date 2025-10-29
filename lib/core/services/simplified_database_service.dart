@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
-import '../utils/app_constants.dart';
+import '../constants/app_constants.dart'; // 🔧 إصلاح المسار
 import 'logger_service.dart';
 import 'offline_service.dart';
 
@@ -22,7 +22,7 @@ class SimplifiedDatabaseService extends GetxService {
   }) async {
     try {
       // التحقق من الاتصال
-      if (!_offlineService.isOnline.value) {
+      if (!_offlineService.isOnline) { // 🔧 إزالة .value
         LoggerService.warning('محاولة إضافة وثيقة في وضع الأوفلاين: $collection');
         return null;
       }
@@ -59,7 +59,7 @@ class SimplifiedDatabaseService extends GetxService {
   }) async {
     try {
       // التحقق من الاتصال
-      if (!_offlineService.isOnline.value) {
+      if (!_offlineService.isOnline) { // 🔧 إزالة .value
         LoggerService.warning('محاولة تحديث وثيقة في وضع الأوفلاين: $collection/$documentId');
         return false;
       }
@@ -90,7 +90,7 @@ class SimplifiedDatabaseService extends GetxService {
   }) async {
     try {
       // التحقق من الاتصال
-      if (!_offlineService.isOnline.value) {
+      if (!_offlineService.isOnline) { // 🔧 إزالة .value
         LoggerService.warning('محاولة حذف وثيقة في وضع الأوفلاين: $collection/$documentId');
         return false;
       }
