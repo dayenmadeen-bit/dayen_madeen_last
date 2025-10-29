@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Debt {
   final String id;
@@ -88,6 +89,61 @@ class Debt {
       updatedAt: updatedAt ?? DateTime.now(),
     );
   }
+  
+  // === إضافة Methods المفقودة للتوافق مع Firebase ===
+  
+  /// تحويل إلى Map - 🔧 إصلاح
+  Map<String, dynamic> toMap() {
+    return toJson(); // استخدام toJson الموجود
+  }
+
+  /// إنشاء من Map - 🔧 إصلاح  
+  factory Debt.fromMap(Map<String, dynamic> map) {
+    return Debt.fromJson(map); // استخدام fromJson الموجود
+  }
+  
+  /// إنشاء من Firestore DocumentSnapshot - 🔧 إصلاح
+  factory Debt.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    data['id'] = doc.id; // إضافة id من DocumentSnapshot
+    
+    // معالجة Timestamp إلى DateTime
+    final createdAtRaw = data['createdAt'];
+    final updatedAtRaw = data['updatedAt'];
+    final dateCreatedRaw = data['dateCreated'];
+    final dueDateRaw = data['dueDate'];
+    
+    data['createdAt'] = _timestampToDateTime(createdAtRaw)?.toIso8601String() ?? DateTime.now().toIso8601String();
+    data['updatedAt'] = _timestampToDateTime(updatedAtRaw)?.toIso8601String() ?? DateTime.now().toIso8601String();
+    data['dateCreated'] = _timestampToDateTime(dateCreatedRaw)?.toIso8601String() ?? DateTime.now().toIso8601String();
+    
+    if (dueDateRaw != null) {
+      data['dueDate'] = _timestampToDateTime(dueDateRaw)?.toIso8601String();
+    }
+    
+    return Debt.fromMap(data);
+  }
+  
+  /// مساعد لتحويل Timestamp إلى DateTime
+  static DateTime? _timestampToDateTime(dynamic timestampValue) {
+    if (timestampValue == null) return null;
+    
+    if (timestampValue is Timestamp) {
+      return timestampValue.toDate();
+    } else if (timestampValue is String) {
+      try {
+        return DateTime.parse(timestampValue);
+      } catch (e) {
+        return null;
+      }
+    } else if (timestampValue is DateTime) {
+      return timestampValue;
+    }
+    
+    return null;
+  }
+  
+  // === نهاية الإضافة ===
 
   // تحويل إلى JSON
   Map<String, dynamic> toJson() {
