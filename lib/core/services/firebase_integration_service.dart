@@ -4,15 +4,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:get/get.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' show Platform;
 
 import '../../firebase_options.dart';
-import '../constants/app_strings.dart';
-import '../../app/data/models/user.dart' as app_user;
-import '../../app/data/models/business_owner.dart';
-import '../../app/data/models/customer.dart';
-import '../../app/data/models/debt.dart';
-import '../../app/data/models/payment.dart';
-import '../../app/data/models/employee.dart';
 import 'logger_service.dart';
 import 'storage_service.dart';
 
@@ -95,12 +90,9 @@ class FirebaseIntegrationService extends GetxService {
   Future<void> _configureFirestore() async {
     try {
       // تفعيل الوضع الأوفلاين
-      await _firestore.enablePersistence(
-        const PersistenceSettings(synchronizeTabs: true),
+      _firestore.settings = const Settings(
+        persistenceEnabled: true,
       );
-      
-      // تفعيل الشبكة
-      await _firestore.enableNetwork();
       
       LoggerService.success('✅ تم إعداد Firestore للعمل أوفلاين');
     } catch (e) {
@@ -159,6 +151,10 @@ class FirebaseIntegrationService extends GetxService {
     try {
       await _analytics.setAnalyticsCollectionEnabled(true);
       await _analytics.setUserId(null); // سيتم تعيينه عند تسجيل الدخول
+      await _analytics.setDefaultEventParameters({
+        'app_version': await _getAppVersion(),
+        'platform': _getCurrentPlatform(),
+      });
       LoggerService.success('✅ تم إعداد Firebase Analytics');
     } catch (e) {
       LoggerService.error('❌ خطأ في إعداد Analytics', error: e);
@@ -182,12 +178,11 @@ class FirebaseIntegrationService extends GetxService {
 
   /// إعداد مراقب حالة الاتصال
   void _setupConnectivityListener() {
-    _firestore.disableNetwork().then((_) {
-      _isOnline.value = false;
-      return _firestore.enableNetwork();
-    }).then((_) {
+    // تحديث بسيط لحالة الاتصال
+    _firestore.enableNetwork().then((_) {
       _isOnline.value = true;
     }).catchError((error) {
+      _isOnline.value = false;
       LoggerService.warning('مشكلة في مراقبة الاتصال: $error');
     });
   }
@@ -203,7 +198,7 @@ class FirebaseIntegrationService extends GetxService {
             .update({
           'fcmToken': token,
           'lastTokenUpdate': FieldValue.serverTimestamp(),
-          'platform': GetPlatform.operatingSystem,
+          'platform': _getCurrentPlatform(),
         });
       }
     } catch (e) {
@@ -223,7 +218,7 @@ class FirebaseIntegrationService extends GetxService {
         'emailVerified': user.emailVerified,
         'lastLoginAt': FieldValue.serverTimestamp(),
         'fcmToken': _fcmToken.value,
-        'platform': GetPlatform.operatingSystem,
+        'platform': _getCurrentPlatform(),
         'appVersion': await _getAppVersion(),
       }, SetOptions(merge: true));
 
@@ -343,7 +338,7 @@ class FirebaseIntegrationService extends GetxService {
           'createdAt': FieldValue.serverTimestamp(),
           'lastLoginAt': FieldValue.serverTimestamp(),
           'fcmToken': _fcmToken.value,
-          'platform': GetPlatform.operatingSystem,
+          'platform': _getCurrentPlatform(),
         });
 
         // تسجيل إحصائية
@@ -378,7 +373,7 @@ class FirebaseIntegrationService extends GetxService {
         await _firestore.collection('users').doc(credential.user!.uid).update({
           'lastLoginAt': FieldValue.serverTimestamp(),
           'fcmToken': _fcmToken.value,
-          'platform': GetPlatform.operatingSystem,
+          'platform': _getCurrentPlatform(),
         });
 
         // تسجيل إحصائية
@@ -405,7 +400,7 @@ class FirebaseIntegrationService extends GetxService {
       await _auth.signOut();
       
       // مسح البيانات المحلية
-      await StorageService.clearAll();
+      await StorageService.clearAllData();
       
       LoggerService.success('✅ تم تسجيل الخروج');
     } catch (e) {
@@ -430,21 +425,6 @@ class FirebaseIntegrationService extends GetxService {
       LoggerService.error('خطأ في إرسال رابط إعادة تعيين كلمة المرور', error: e);
       _handleAuthError(e);
       return false;
-    }
-  }
-
-  /// إعداد Analytics
-  Future<void> _configureAnalytics() async {
-    try {
-      await _analytics.setAnalyticsCollectionEnabled(true);
-      await _analytics.setDefaultEventParameters({
-        'app_version': await _getAppVersion(),
-        'platform': GetPlatform.operatingSystem,
-      });
-      
-      LoggerService.success('✅ تم إعداد Analytics');
-    } catch (e) {
-      LoggerService.error('خطأ في إعداد Analytics', error: e);
     }
   }
 
@@ -500,8 +480,21 @@ class FirebaseIntegrationService extends GetxService {
     }
   }
 
+  /// الحصول على منصة التشغيل الحالية
+  String _getCurrentPlatform() {
+    if (kIsWeb) {
+      return 'web';
+    } else {
+      try {
+        return Platform.operatingSystem;
+      } catch (e) {
+        return 'unknown';
+      }
+    }
+  }
+
   /// تسجيل أحداث مخصصة للتحليلات
-  Future<void> logEvent(String eventName, [Map<String, dynamic>? parameters]) async {
+  Future<void> logEvent(String eventName, [Map<String, Object>? parameters]) async {
     try {
       await _analytics.logEvent(
         name: eventName,
