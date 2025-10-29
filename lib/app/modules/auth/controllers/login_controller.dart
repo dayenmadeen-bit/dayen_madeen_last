@@ -7,6 +7,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/services/auth_service.dart';
 import '../../../../core/services/credentials_vault_service.dart';
 import '../../../../core/services/logger_service.dart';
+import '../../../../core/services/offline_service.dart'; // ✅ تم إضافته
 import '../../../../core/services/secure_auth_service.dart';
 import '../../../../core/services/security_service.dart';
 import '../../../../core/services/storage_service.dart';
@@ -22,8 +23,8 @@ class LoginController extends GetxController {
   // حالات التحكم
   var isLoading = false.obs;
   var isPasswordHidden = true.obs;
-  var rememberMe = false.obs;
-  var offlineMode = false.obs; // وضع الأوفلاين
+  var rememberMe = false.obs; // ✅ محتفظ به للتوافق مع الكود الموجود
+  var offlineMode = false.obs; // ✅ وضع الأوفلاين
   var isOwnerLogin = true.obs;
   var userType = 'business_owner'.obs; // نوع المستخدم الجديد
 
@@ -40,9 +41,58 @@ class LoginController extends GetxController {
       Get.put(CredentialsVaultService(), permanent: true);
     }
 
+    // ✅ تهيئة وضع الأوفلاين
+    _initializeOfflineMode();
+    
     _checkBiometricAvailability();
     _loadSavedCredentials();
   }
+
+  // ✅ تهيئة وضع الأوفلاين
+  Future<void> _initializeOfflineMode() async {
+    try {
+      // تسجيل خدمة الأوفلاين إذا لم تكن مسجلة
+      if (!Get.isRegistered<OfflineService>()) {
+        Get.put(OfflineService(), permanent: true);
+      }
+
+      // تحميل الإعداد المحفوظ
+      final savedOfflineMode = StorageService.getBool('offline_mode') ?? false;
+      offlineMode.value = savedOfflineMode;
+      
+      // تفعيل وضع الأوفلاين إذا كان محفوظاً
+      if (savedOfflineMode) {
+        Get.find<OfflineService>().enableOfflineMode();
+      }
+      
+      LoggerService.info('تم تهيئة وضع الأوفلاين: $savedOfflineMode');
+    } catch (e) {
+      LoggerService.error('خطأ في تهيئة وضع الأوفلاين', error: e);
+    }
+  }
+
+  // ✅ تبديل وضع الأوفلاين
+  Future<void> toggleOfflineMode(bool enabled) async {
+    try {
+      offlineMode.value = enabled;
+      await StorageService.setBool('offline_mode', enabled);
+      
+      if (enabled) {
+        Get.find<OfflineService>().enableOfflineMode();
+        LoggerService.info('تم تفعيل وضع الأوفلاين');
+        _showInfoMessage('تم تفعيل وضع الأوفلاين - قراءة فقط');
+      } else {
+        Get.find<OfflineService>().disableOfflineMode();
+        LoggerService.info('تم إلغاء وضع الأوفلاين');
+      }
+    } catch (e) {
+      LoggerService.error('خطأ في تبديل وضع الأوفلاين', error: e);
+      _showErrorMessage('خطأ في تغيير وضع الأوفلاين');
+    }
+  }
+
+  // ✅ فحص وضع الأوفلاين
+  bool get isOfflineMode => offlineMode.value;
 
   // فحص توفر المصادقة البيومترية وتفعيلها حسب الإعدادات
   Future<void> _checkBiometricAvailability() async {
@@ -72,6 +122,8 @@ class LoginController extends GetxController {
   // تحميل بيانات الدخول المحفوظة
   void _loadSavedCredentials() {
     // يمكن إضافة منطق تحميل البيانات المحفوظة هنا
+    final savedRememberMe = StorageService.getBool('remember_me') ?? false;
+    rememberMe.value = savedRememberMe;
   }
 
   // تبديل نوع تسجيل الدخول
@@ -144,7 +196,20 @@ class LoginController extends GetxController {
     try {
       isLoading.value = true;
 
-      // محاكاة تسجيل الدخول بناءً على نوع المستخدم
+      // ✅ فحص وضع الأوفلاين أولاً
+      if (offlineMode.value) {
+        // في وضع الأوفلاين، نحاول تسجيل الدخول من البيانات المحفوظة محلياً
+        final offlineLoginResult = await _tryOfflineLogin();
+        if (offlineLoginResult) {
+          _handleSuccessfulLogin('تم تسجيل الدخول في وضع الأوفلاين ✅\n(قراءة فقط)');
+          return;
+        } else {
+          _showErrorMessage('فشل تسجيل الدخول في وضع الأوفلاين\nلا توجد بيانات محفوظة محلياً');
+          return;
+        }
+      }
+
+      // تسجيل الدخول العادي (عبر الإنترنت)
       await Future.delayed(const Duration(milliseconds: 1500));
 
       bool loginSuccess = false;
@@ -158,41 +223,53 @@ class LoginController extends GetxController {
       }
 
       if (loginSuccess) {
-        // نجح تسجيل الدخول
-        String successMessage = 'تم تسجيل الدخول بنجاح ✅';
-        if (offlineMode.value) {
-          successMessage += '\n(وضع الأوفلاين - قراءة فقط)';
-        }
-        _showSuccessMessage(successMessage);
-
-        // حفظ بيانات الدخول إذا كان المستخدم يريد ذلك
-        if (rememberMe.value) {
-          await _saveCredentials();
-        }
-
-        // حفظ وضع الأوفلاين
-        if (offlineMode.value) {
-          await StorageService.setBool('offline_mode', true);
-        }
-
-        // التوجيه حسب نوع المستخدم
-        if (userType.value == 'business_owner') {
-          // مالك المنشأة يذهب إلى لوحة التحكم
-          LoggerService.navigation('تسجيل الدخول', AppRoutes.home);
-          Get.offAllNamed(AppRoutes.home);
-        } else {
-          // الزبون يذهب إلى لوحة تحكم الزبون
-          LoggerService.navigation('تسجيل الدخول', AppRoutes.clientDashboard);
-          Get.offAllNamed(AppRoutes.clientDashboard);
-        }
+        _handleSuccessfulLogin('تم تسجيل الدخول بنجاح ✅');
       } else {
-        // فشل تسجيل الدخول
         _showErrorMessage('بيانات تسجيل الدخول غير صحيحة');
       }
     } catch (e) {
       _showErrorMessage('حدث خطأ غير متوقع');
+      LoggerService.error('خطأ في تسجيل الدخول', error: e);
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  // ✅ محاولة تسجيل الدخول في وضع الأوفلاين
+  Future<bool> _tryOfflineLogin() async {
+    try {
+      final offlineService = Get.find<OfflineService>();
+      final email = emailController.text.trim();
+      final password = passwordController.text;
+      
+      // محاولة تسجيل الدخول من البيانات المحفوظة
+      final result = await offlineService.attemptOfflineLogin(email, password);
+      return result;
+    } catch (e) {
+      LoggerService.error('خطأ في تسجيل الدخول الأوفلاين', error: e);
+      return false;
+    }
+  }
+
+  // ✅ معالجة تسجيل الدخول الناجح
+  Future<void> _handleSuccessfulLogin(String message) async {
+    _showSuccessMessage(message);
+
+    // حفظ بيانات الدخول إذا كان المستخدم يريد ذلك
+    if (rememberMe.value) {
+      await _saveCredentials();
+    }
+
+    // حفظ وضع الأوفلاين
+    await StorageService.setBool('offline_mode', offlineMode.value);
+
+    // التوجيه حسب نوع المستخدم
+    if (userType.value == 'business_owner') {
+      LoggerService.navigation('تسجيل الدخول', AppRoutes.home);
+      Get.offAllNamed(AppRoutes.home);
+    } else {
+      LoggerService.navigation('تسجيل الدخول', AppRoutes.clientDashboard);
+      Get.offAllNamed(AppRoutes.clientDashboard);
     }
   }
 
@@ -225,11 +302,12 @@ class LoginController extends GetxController {
   Future<void> loginWithBiometrics() async {
     try {
       isLoading.value = true;
+      
       // تحقق من تفعيل البصمة
       final isEnabled = StorageService.getBool('biometric_enabled') ?? false;
       if (!isEnabled) {
-        _showErrorMessage(
-            'البصمة غير مفعلة في إعدادات التطبيق. يرجى تفعيلها أولاً من إعدادات الأمان.');
+        _showErrorMessage('
+البصمة غير مفعلة في إعدادات التطبيق. يرجى تفعيلها أولاً من إعدادات الأمان.');
         isLoading.value = false;
         return;
       }
@@ -237,67 +315,48 @@ class LoginController extends GetxController {
       // تحقق من توفر البصمة على الجهاز
       final isAvailable = await SecurityService.instance.isBiometricAvailable();
       if (!isAvailable) {
-        _showErrorMessage(
-            'جهازك لا يدعم المصادقة البيومترية أو لم يتم منح الأذونات.');
+        _showErrorMessage('جهازك لا يدعم المصادقة البيومترية أو لم يتم منح الأذونات.');
         isLoading.value = false;
         return;
       }
 
       // التحقق من البصمة عبر SecurityService
-      final isAuthenticated =
-          await SecurityService.instance.authenticateWithBiometric();
+      final isAuthenticated = await SecurityService.instance.authenticateWithBiometric();
       if (!isAuthenticated) {
-        _showErrorMessage(
-            'فشل في التحقق بالبصمة أو تم إلغاء العملية من قبل المستخدم.');
+        _showErrorMessage('فشل في التحقق بالبصمة أو تم إلغاء العملية من قبل المستخدم.');
         isLoading.value = false;
         return;
       }
 
-      // لمالك المنشأة: نستخدم last_email لتسجيل الدخول مباشرة من Firestore
       bool loginSuccess = false;
       if (userType.value == 'business_owner') {
         final lastEmail = StorageService.getString('last_email');
         if (lastEmail == null || lastEmail.isEmpty) {
-          _showErrorMessage(
-              'لا يوجد بريد محفوظ للبصمة. سجّل دخولاً مرة واحدة بالبريد مع تفعيل "تذكرني".');
+          _showErrorMessage('لا يوجد بريد محفوظ للبصمة. سجّل دخولاً مرة واحدة بالبريد مع تفعيل "تذكرني".');
           isLoading.value = false;
           return;
         }
-        // تخطي إدخال البريد وكلمة المرور — الاعتماد على جلسة محفوظة أو إنشاء جلسة جديدة من Firestore
         final result = await AuthService.instance.loginWithBiometric();
         loginSuccess = result.isSuccess;
       } else {
-        // البصمة متاحة لمالك المنشأة والزبون
-        final lastUsername = StorageService.getString(
-            'last_username'); // افتراض وجود last_username للزبون
+        final lastUsername = StorageService.getString('last_username');
         if (lastUsername == null || lastUsername.isEmpty) {
-          _showErrorMessage(
-              'لا يوجد اسم مستخدم محفوظ للبصمة. سجّل دخولاً مرة واحدة باسم المستخدم مع تفعيل "تذكرني".');
+          _showErrorMessage('لا يوجد اسم مستخدم محفوظ للبصمة. سجّل دخولاً مرة واحدة باسم المستخدم مع تفعيل "تذكرني".');
           isLoading.value = false;
           return;
         }
-        final result = await AuthService.instance
-            .loginClientWithBiometric(); // دالة جديدة للزبون
+        final result = await AuthService.instance.loginClientWithBiometric();
         loginSuccess = result.isSuccess;
       }
 
       if (loginSuccess) {
-        _showSuccessMessage('تم تسجيل الدخول بالبصمة بنجاح ✅');
-
-        // التوجيه حسب نوع المستخدم
-        if (userType.value == 'business_owner') {
-          LoggerService.navigation('تسجيل الدخول بالبصمة', AppRoutes.home);
-          Get.offAllNamed(AppRoutes.home);
-        } else {
-          LoggerService.navigation(
-              'تسجيل الدخول بالبصمة', AppRoutes.clientDashboard);
-          Get.offAllNamed(AppRoutes.clientDashboard);
-        }
+        await _handleSuccessfulLogin('تم تسجيل الدخول بالبصمة بنجاح ✅');
       } else {
         _showErrorMessage('فشل تسجيل الدخول بالبصمة. يرجى المحاولة مرة أخرى.');
       }
     } catch (e) {
       _showErrorMessage('حدث خطأ أثناء التحقق بالبصمة');
+      LoggerService.error('خطأ في تسجيل الدخول بالبصمة', error: e);
     } finally {
       isLoading.value = false;
     }
@@ -306,19 +365,13 @@ class LoginController extends GetxController {
   // نسيت كلمة المرور
   void forgotPassword() {
     if (isOwnerLogin.value) {
-      // لمالك المنشأة - الانتقال إلى شاشة استعادة كلمة المرور
       Get.toNamed(AppRoutes.forgotPassword);
     } else {
-      // للعملاء - إظهار رسالة للتواصل مع مالك المنشأة
       Get.dialog(
         AlertDialog(
           title: Row(
             children: [
-              Icon(
-                Icons.help_outline,
-                color: AppColors.primary,
-                size: 24,
-              ),
+              Icon(Icons.help_outline, color: AppColors.primary, size: 24),
               const SizedBox(width: 8),
               const Text('نسيت كلمة المرور'),
             ],
@@ -327,39 +380,21 @@ class LoginController extends GetxController {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'يمكنك التواصل مع مالك المنشأة لإعادة تعيين كلمة المرور.',
-                style: TextStyle(
-                  fontSize: 16,
-                  height: 1.5,
-                ),
-              ),
+              const Text('يمكنك التواصل مع مالك المنشأة لإعادة تعيين كلمة المرور.'),
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: AppColors.info.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppColors.info.withValues(alpha: 0.3),
-                  ),
+                  border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.info_outline,
-                      color: AppColors.info,
-                      size: 20,
-                    ),
+                    Icon(Icons.info_outline, color: AppColors.info, size: 20),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'لا يمكن للعملاء إعادة تعيين كلمة المرور بأنفسهم',
-                        style: TextStyle(
-                          color: AppColors.info,
-                          fontSize: 14,
-                        ),
-                      ),
+                    const Expanded(
+                      child: Text('لا يمكن للعملاء إعادة تعيين كلمة المرور بأنفسهم'),
                     ),
                   ],
                 ),
@@ -376,11 +411,8 @@ class LoginController extends GetxController {
                 Get.back();
                 contactSupport();
               },
-              icon: Icon(Icons.support_agent, size: 18),
+              icon: const Icon(Icons.support_agent, size: 18),
               label: const Text('التواصل والدعم'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-              ),
             ),
           ],
         ),
@@ -420,8 +452,7 @@ class LoginController extends GetxController {
     Get.dialog(
       AlertDialog(
         title: const Text('المتابعة كضيف'),
-        content: const Text(
-            'هل تريد المتابعة بدون تسجيل الدخول؟\nستكون الميزات محدودة.'),
+        content: const Text('هل تريد المتابعة بدون تسجيل الدخول؟\nستكون الميزات محدودة.'),
         actions: [
           TextButton(
             onPressed: () => Get.back(),
@@ -443,13 +474,11 @@ class LoginController extends GetxController {
   Future<void> _saveCredentials() async {
     try {
       if (userType.value == 'business_owner') {
-        // حفظ بيانات مالك المنشأة للمصادقة البيومترية
         final email = emailController.text.trim();
         final password = passwordController.text;
 
         if (email.isNotEmpty && password.isNotEmpty) {
-          final success =
-              await SecureAuthService.saveBusinessOwnerCredentialsForBiometric(
+          final success = await SecureAuthService.saveBusinessOwnerCredentialsForBiometric(
             email: email,
             password: password,
           );
@@ -457,19 +486,15 @@ class LoginController extends GetxController {
           if (success) {
             await StorageService.setString('last_email', email);
             await StorageService.setBool('remember_me', true);
-            LoggerService.info(
-                'تم حفظ بيانات اعتماد مالك المنشأة للمصادقة البيومترية');
+            LoggerService.info('تم حفظ بيانات اعتماد مالك المنشأة للمصادقة البيومترية');
           }
         }
       } else {
-        // للعملاء - يمكن استخدام الخدمة الموجودة
-        // يمكن إضافة منطق حفظ بيانات العملاء هنا إذا لزم الأمر
         final username = usernameController.text.trim();
         final password = passwordController.text;
 
         if (username.isNotEmpty && password.isNotEmpty) {
-          final success =
-              await SecureAuthService.saveClientCredentialsForBiometric(
+          final success = await SecureAuthService.saveClientCredentialsForBiometric(
             username: username,
             password: password,
           );
@@ -477,19 +502,17 @@ class LoginController extends GetxController {
           if (success) {
             await StorageService.setString('last_username', username);
             await StorageService.setBool('remember_me', true);
-            LoggerService.info(
-                'تم حفظ بيانات اعتماد الزبون للمصادقة البيومترية');
+            LoggerService.info('تم حفظ بيانات اعتماد الزبون للمصادقة البيومترية');
           }
         }
       }
     } catch (e) {
       LoggerService.error('خطأ في حفظ بيانات الاعتماد', error: e);
     }
-    // إعادة فحص توفر البصمة بعد الحفظ
     await _checkBiometricAvailability();
   }
 
-  // التحقق من صحة تسجيل دخول مالك المنشأة (باستخدام Firestore عبر AuthService)
+  // التحقق من صحة تسجيل دخول مالك المنشأة
   Future<bool> _validateBusinessOwnerLogin() async {
     final email = emailController.text.trim();
     final password = passwordController.text;
@@ -505,7 +528,7 @@ class LoginController extends GetxController {
     return result.isSuccess;
   }
 
-  // التحقق من صحة تسجيل دخول الزبون (Firestore عبر AuthService)
+  // التحقق من صحة تسجيل دخول الزبون
   Future<bool> _validateClientLogin() async {
     final username = usernameController.text.trim();
     final password = passwordController.text;
@@ -541,11 +564,15 @@ class LoginController extends GetxController {
     );
   }
 
-  // @override
-  // void onClose() {
-  //   emailController.dispose();
-  //   usernameController.dispose();
-  //   passwordController.dispose();
-  //   super.onClose();
-  // }
+  // ✅ إظهار رسالة معلوماتية
+  void _showInfoMessage(String message) {
+    Get.snackbar(
+      'معلومة',
+      message,
+      backgroundColor: AppColors.info,
+      colorText: Colors.white,
+      snackPosition: SnackPosition.TOP,
+      duration: const Duration(seconds: 2),
+    );
+  }
 }
