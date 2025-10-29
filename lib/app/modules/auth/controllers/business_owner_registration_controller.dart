@@ -6,6 +6,8 @@ import '../../../../core/services/firestore_service.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/services/logger_service.dart';
 import '../../../../core/services/offline_service.dart';
+import '../../../widgets/unique_id_popup.dart'; // ✅ إضافة ويجت عرض الرقم المميز
+import '../../../routes/app_routes.dart';
 import '../../../data/models/user_role.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
@@ -93,7 +95,12 @@ class BusinessOwnerRegistrationController extends GetxController {
   void nextStep() {
     if (currentStep.value < 3) {
       if (_validateCurrentStep()) {
-        currentStep.value++;
+        // ✅ إذا كنا في الخطوة 2 (كلمة المرور)، ابدأ عملية التسجيل
+        if (currentStep.value == 2) {
+          _performRegistration();
+        } else {
+          currentStep.value++;
+        }
       }
     }
   }
@@ -102,6 +109,166 @@ class BusinessOwnerRegistrationController extends GetxController {
     if (currentStep.value > 0) {
       currentStep.value--;
     }
+  }
+
+  // ✅ أداء عملية التسجيل وعرض الرقم المميز
+  Future<void> _performRegistration() async {
+    try {
+      // تحقق من توفر الإنترنت قبل البدء
+      if (!_offlineService.isOnline) {
+        _showErrorMessage('يجب توفر اتصال بالإنترنت لإكمال إنشاء الحساب');
+        return;
+      }
+
+      isLoading.value = true;
+
+      final String email = ownerEmailController.text.trim();
+      final String password = passwordController.text;
+      final String ownerName = ownerNameController.text.trim();
+      final String businessName = businessNameController.text.trim();
+
+      // إذا تم إدخال بريد إلكتروني: يجب أن يكون مُتحققاً قبل توليد الرقم المميز والدخول لصفحة عرضه
+      if (email.isNotEmpty) {
+        final auth = firebase_auth.FirebaseAuth.instance;
+        firebase_auth.User? fbUser = auth.currentUser;
+
+        // إنشاء/تسجيل الدخول للحساب بالبريد لإرسال رابط التحقق إن لزم
+        if (fbUser == null || (fbUser.email != null && fbUser.email != email)) {
+          try {
+            final methods = await auth.fetchSignInMethodsForEmail(email);
+            if (methods.isNotEmpty) {
+              final cred = await auth.signInWithEmailAndPassword(
+                email: email,
+                password: password,
+              );
+              fbUser = cred.user;
+            } else {
+              final cred = await auth.createUserWithEmailAndPassword(
+                email: email,
+                password: password,
+              );
+              fbUser = cred.user;
+            }
+          } on firebase_auth.FirebaseAuthException catch (e) {
+            _showErrorMessage('
+تعذر استخدام البريد الإلكتروني: ${e.message ?? e.code}');
+            return;
+          }
+        }
+
+        // تأكد من حالة التحقق
+        await fbUser?.reload();
+        if (fbUser != null && !(fbUser.emailVerified)) {
+          try {
+            await fbUser.sendEmailVerification();
+          } catch (_) {}
+          // الانتقال إلى صفحة التحقق من البريد
+          final verified = await Get.toNamed('/email-verification',
+              arguments: {'email': email});
+          if (verified != true) {
+            _showErrorMessage(
+                'لم يتم التحقق من البريد الإلكتروني بعد. يرجى التحقق والمتابعة.');
+            return;
+          }
+        }
+      }
+
+      // توليد الرقم المميز
+      final uniqueId = await _uniqueIdService.generateBusinessOwnerId();
+      generatedUniqueId.value = uniqueId;
+
+      // إنشاء بيانات المالك
+      final businessOwnerData = {
+        'uniqueId': uniqueId,
+        'name': ownerName,
+        'email': email.isEmpty ? null : email,
+        'businessName': businessName,
+        'businessType': businessTypeController.text.trim(),
+        'businessAddress': businessAddressController.text.trim().isEmpty
+            ? null
+            : businessAddressController.text.trim(),
+        'currency': selectedCurrency.value,
+        'bankName': bankNameController.text.trim().isEmpty
+            ? null
+            : bankNameController.text.trim(),
+        'accountNumber': accountNumberController.text.trim().isEmpty
+            ? null
+            : accountNumberController.text.trim(),
+        'phoneNumber': phoneNumberController.text.trim().isEmpty
+            ? null
+            : phoneNumberController.text.trim(),
+        'passwordHash': password, // سيتم تشفيرها لاحقاً
+        'role': UserRole.businessOwner.value,
+        'isActive': true,
+        'emailVerified': email.isEmpty
+            ? false
+            : (firebase_auth.FirebaseAuth.instance.currentUser?.emailVerified ??
+                false),
+        'createdAt': DateTime.now(),
+        'updatedAt': DateTime.now(),
+      };
+
+      // حفظ البيانات في Firestore
+      String createdDocId;
+      if (email.isNotEmpty &&
+          (firebase_auth.FirebaseAuth.instance.currentUser?.emailVerified ??
+              false)) {
+        final uid = firebase_auth.FirebaseAuth.instance.currentUser!.uid;
+        await _firestoreService.setDoc(
+          _firestoreService.usersCol().doc(uid),
+          {
+            ...businessOwnerData,
+            'id': uid,
+          },
+          merge: false,
+        );
+        createdDocId = uid;
+      } else {
+        final userRef = await _firestoreService.addDoc(
+          _firestoreService.usersCol(),
+          businessOwnerData,
+        );
+        await userRef.update({'id': userRef.id});
+        createdDocId = userRef.id;
+      }
+
+      try {
+        await _uniqueIdService.markUniqueIdUsed(uniqueId,
+            userDocId: createdDocId, role: UserRole.businessOwner.value);
+      } catch (_) {}
+
+      // حفظ الرقم المميز محلياً
+      await StorageService.setString('user_unique_id', uniqueId);
+      await StorageService.setString('user_role', UserRole.businessOwner.value);
+
+      _showSuccessMessage('تم إنشاء الحساب بنجاح!');
+
+      // ✅ عرض الرقم المميز في نافذة منبثقة جميلة
+      UniqueIdPopup.showUniqueIdDialog(
+        uniqueId: uniqueId,
+        userType: 'business_owner',
+        userEmail: email.isEmpty ? null : email,
+        userName: ownerName,
+        onContinue: () {
+          // الانتقال لشاشة تسجيل الدخول
+          Get.offAllNamed(AppRoutes.login);
+        },
+      );
+
+      LoggerService.success('تم تسجيل مالك منشأة جديد: $uniqueId');
+      
+    } catch (e) {
+      LoggerService.error('خطأ في إنشاء الحساب', error: e);
+      _showErrorMessage('حدث خطأ في إنشاء الحساب');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ✅ إكمال التسجيل (لن يتم استخدامه لأن العملية تمت في _performRegistration)
+  Future<void> completeRegistration() async {
+    // لن يتم استخدام هضا الآن بعد التعديل
+    // لأن العملية تمت في _performRegistration وتم عرض الرقم المميز هناك
   }
 
   // التحقق من صحة الخطوة الحالية
@@ -187,146 +354,6 @@ class BusinessOwnerRegistrationController extends GetxController {
 
   void toggleConfirmPasswordVisibility() {
     isConfirmPasswordHidden.value = !isConfirmPasswordHidden.value;
-  }
-
-  // إكمال التسجيل
-  Future<void> completeRegistration() async {
-    try {
-      // تحقق من توفر الإنترنت قبل البدء
-      if (!_offlineService.isOnline) {
-        _showErrorMessage('يجب توفر اتصال بالإنترنت لإكمال إنشاء الحساب');
-        return;
-      }
-
-      isLoading.value = true;
-
-      final String email = ownerEmailController.text.trim();
-      final String password = passwordController.text;
-
-      // إذا تم إدخال بريد إلكتروني: يجب أن يكون مُتحققاً قبل توليد الرقم المميز والدخول لصفحة عرضه
-      if (email.isNotEmpty) {
-        final auth = firebase_auth.FirebaseAuth.instance;
-        firebase_auth.User? fbUser = auth.currentUser;
-
-        // إنشاء/تسجيل الدخول للحساب بالبريد لإرسال رابط التحقق إن لزم
-        if (fbUser == null || (fbUser.email != null && fbUser.email != email)) {
-          try {
-            final methods = await auth.fetchSignInMethodsForEmail(email);
-            if (methods.isNotEmpty) {
-              final cred = await auth.signInWithEmailAndPassword(
-                email: email,
-                password: password,
-              );
-              fbUser = cred.user;
-            } else {
-              final cred = await auth.createUserWithEmailAndPassword(
-                email: email,
-                password: password,
-              );
-              fbUser = cred.user;
-            }
-          } on firebase_auth.FirebaseAuthException catch (e) {
-            _showErrorMessage(
-                'تعذر استخدام البريد الإلكتروني: ${e.message ?? e.code}');
-            return;
-          }
-        }
-
-        // تأكد من حالة التحقق
-        await fbUser?.reload();
-        if (fbUser != null && !(fbUser.emailVerified)) {
-          try {
-            await fbUser.sendEmailVerification();
-          } catch (_) {}
-          // الانتقال إلى صفحة التحقق من البريد
-          final verified = await Get.toNamed('/email-verification',
-              arguments: {'email': email});
-          if (verified != true) {
-            _showErrorMessage(
-                'لم يتم التحقق من البريد الإلكتروني بعد. يرجى التحقق والمتابعة.');
-            return;
-          }
-        }
-      }
-
-      // توليد الرقم المميز
-      final uniqueId = await _uniqueIdService.generateBusinessOwnerId();
-      generatedUniqueId.value = uniqueId;
-
-      // إنشاء بيانات المالك
-      final businessOwnerData = {
-        'uniqueId': uniqueId,
-        'name': ownerNameController.text.trim(),
-        'email': email.isEmpty ? null : email,
-        'businessName': businessNameController.text.trim(),
-        'businessType': businessTypeController.text.trim(),
-        'businessAddress': businessAddressController.text.trim().isEmpty
-            ? null
-            : businessAddressController.text.trim(),
-        'currency': selectedCurrency.value,
-        'bankName': bankNameController.text.trim().isEmpty
-            ? null
-            : bankNameController.text.trim(),
-        'accountNumber': accountNumberController.text.trim().isEmpty
-            ? null
-            : accountNumberController.text.trim(),
-        'phoneNumber': phoneNumberController.text.trim().isEmpty
-            ? null
-            : phoneNumberController.text.trim(),
-        'passwordHash': passwordController.text, // سيتم تشفيرها لاحقاً
-        'role': UserRole.businessOwner.value,
-        'isActive': true,
-        'emailVerified': email.isEmpty
-            ? false
-            : (firebase_auth.FirebaseAuth.instance.currentUser?.emailVerified ??
-                false),
-        'createdAt': DateTime.now(),
-        'updatedAt': DateTime.now(),
-      };
-
-      // حفظ البيانات في Firestore
-      String createdDocId;
-      if (email.isNotEmpty &&
-          (firebase_auth.FirebaseAuth.instance.currentUser?.emailVerified ??
-              false)) {
-        final uid = firebase_auth.FirebaseAuth.instance.currentUser!.uid;
-        await _firestoreService.setDoc(
-          _firestoreService.usersCol().doc(uid),
-          {
-            ...businessOwnerData,
-            'id': uid,
-          },
-          merge: false,
-        );
-        createdDocId = uid;
-      } else {
-        final userRef = await _firestoreService.addDoc(
-          _firestoreService.usersCol(),
-          businessOwnerData,
-        );
-        await userRef.update({'id': userRef.id});
-        createdDocId = userRef.id;
-      }
-
-      try {
-        await _uniqueIdService.markUniqueIdUsed(uniqueId,
-            userDocId: createdDocId, role: UserRole.businessOwner.value);
-      } catch (_) {}
-
-      // حفظ الرقم المميز محلياً
-      await StorageService.setString('user_unique_id', uniqueId);
-      await StorageService.setString('user_role', UserRole.businessOwner.value);
-
-      _showSuccessMessage('تم إنشاء الحساب بنجاح!');
-
-      // الانتقال للخطوة الأخيرة
-      currentStep.value = 3;
-    } catch (e) {
-      LoggerService.error('خطأ في إنشاء الحساب', error: e);
-      _showErrorMessage('حدث خطأ في إنشاء الحساب');
-    } finally {
-      isLoading.value = false;
-    }
   }
 
   // التحقق من صحة البيانات
