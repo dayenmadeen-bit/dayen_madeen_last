@@ -63,7 +63,7 @@ import '../modules/debts/views/debts_screen.dart';
 import '../modules/debts/views/edit_debt_screen.dart';
 import '../modules/employees/controllers/employees_controller.dart';
 import '../modules/employees/views/add_employee_screen.dart';
-// import '../modules/employees/views/edit_employee_screen.dart';
+import '../modules/employees/views/edit_employee_screen.dart'; // ✅ تم إلغاء التعليق
 import '../modules/employees/views/employee_details_screen.dart';
 // Employees Module
 import '../modules/employees/views/employees_screen.dart';
@@ -88,7 +88,7 @@ import '../modules/payments/views/payments_screen.dart';
 import '../modules/reports/controllers/reports_controller.dart';
 import '../modules/reports/views/custom_report_screen.dart';
 import '../modules/reports/views/daily_report_screen.dart';
-// import '../modules/reports/views/monthly_report_screen.dart'; // تم حذف الملف
+// تم حذف import للتقرير الشهري لأن الملف محذوف
 // Reports Module
 import '../modules/reports/views/reports_screen.dart';
 import '../modules/settings/controllers/settings_controller.dart';
@@ -133,16 +133,6 @@ class AppPages {
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 300),
     ),
-
-    // GetPage(
-    //   name: AppRoutes.register,
-    //   page: () => const RegisterScreen(),
-    //   binding: BindingsBuilder(() {
-    //     Get.lazyPut<RegisterController>(() => RegisterController());
-    //   }),
-    //   transition: Transition.rightToLeft,
-    //   transitionDuration: const Duration(milliseconds: 300),
-    // ),
 
     GetPage(
       name: AppRoutes.businessOwnerRegister,
@@ -386,15 +376,16 @@ class AppPages {
       transitionDuration: const Duration(milliseconds: 300),
     ),
 
-    // GetPage(
-    //   name: AppRoutes.editEmployee,
-    //   page: () => const EditEmployeeScreen(),
-    //   binding: BindingsBuilder(() {
-    //     Get.lazyPut<EmployeesController>(() => EmployeesController());
-    //   }),
-    //   transition: Transition.rightToLeft,
-    //   transitionDuration: const Duration(milliseconds: 300),
-    // ),
+    // ✅ تم تفعيل مسار تعديل الموظف
+    GetPage(
+      name: AppRoutes.editEmployee,
+      page: () => const EditEmployeeScreen(),
+      binding: BindingsBuilder(() {
+        Get.lazyPut<EmployeesController>(() => EmployeesController());
+      }),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 300),
+    ),
 
     GetPage(
       name: AppRoutes.employeeDetails,
@@ -427,15 +418,8 @@ class AppPages {
       transitionDuration: const Duration(milliseconds: 300),
     ),
 
-    // GetPage(
-    //   name: AppRoutes.monthlyReport,
-    //   page: () => const MonthlyReportScreen(),
-    //   binding: BindingsBuilder(() {
-    //     Get.lazyPut<ReportsController>(() => ReportsController());
-    //   }),
-    //   transition: Transition.rightToLeft,
-    //   transitionDuration: const Duration(milliseconds: 300),
-    // ),
+    // ❌ تم حذف مسار التقرير الشهري لأن الملف محذوف
+    // سيتم إنشاؤه لاحقاً أو إزالة المراجع
 
     GetPage(
       name: AppRoutes.customReport,
@@ -580,7 +564,6 @@ class AppPages {
       name: AppRoutes.clientDashboard,
       page: () => const ClientMainScreen(),
       binding: BindingsBuilder(() {
-        // التأكد من تهيئة AuthService
         if (!Get.isRegistered<AuthService>()) {
           Get.put(AuthService(), permanent: true);
         }
@@ -705,7 +688,7 @@ class AppPages {
     // ===== مسارات إدارة طلبات الزبائن - مالك المنشأة =====
     GetPage(
       name: AppRoutes.manageClientRequests,
-      page: () => const ClientRequestsScreen(),
+      page: () => const ManageClientRequestsScreen(),
       binding: BindingsBuilder(() {
         Get.lazyPut<ClientRequestsController>(() => ClientRequestsController());
       }),
@@ -727,17 +710,6 @@ class AppPages {
       binding: BindingsBuilder(() {
         Get.lazyPut<BusinessOwnerHomeController>(
             () => BusinessOwnerHomeController());
-      }),
-      transition: Transition.rightToLeft,
-      transitionDuration: const Duration(milliseconds: 300),
-    ),
-
-    // ===== مسارات إدارة الطلبات =====
-    GetPage(
-      name: AppRoutes.manageClientRequests,
-      page: () => const ManageClientRequestsScreen(),
-      binding: BindingsBuilder(() {
-        Get.lazyPut<ClientRequestsController>(() => ClientRequestsController());
       }),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 300),
@@ -766,176 +738,9 @@ class AppPages {
       transitionDuration: const Duration(milliseconds: 300),
     ),
   ];
-
-  // دوال مساعدة للتنقل
-
-  // التنقل للرئيسية مع مسح المسارات السابقة
-  static void toHome() {
-    Get.offAllNamed(AppRoutes.home);
-  }
-
-  // التنقل لتسجيل الدخول مع مسح المسارات السابقة
-  static void toLogin() {
-    Get.offAllNamed(AppRoutes.login);
-  }
-
-  // التنقل لشاشة البداية مع مسح المسارات السابقة
-  static void toSplash() {
-    Get.offAllNamed(AppRoutes.splash);
-  }
-
-  // التنقل لتفاصيل العميل
-  static void toCustomerDetails(String customerId) {
-    Get.toNamed(AppRoutes.customerDetails,
-        arguments: {'customerId': customerId});
-  }
-
-  // التنقل لإضافة عميل جديد
-  static void toAddCustomer() {
-    Get.toNamed(AppRoutes.addCustomer);
-  }
-
-  // التنقل لقائمة الديون
-  static void toDebts() {
-    Get.toNamed(AppRoutes.debts);
-  }
-
-  // التنقل لإضافة دين جديد
-  static void toAddDebt({String? customerId}) {
-    Get.toNamed(AppRoutes.addDebt,
-        arguments: customerId != null ? {'customerId': customerId} : null);
-  }
-
-  // التنقل لتفاصيل الدين
-  static void toDebtDetails(String debtId) {
-    Get.toNamed(AppRoutes.debtDetails, arguments: {'debtId': debtId});
-  }
-
-  // التنقل لتعديل الدين
-  static void toEditDebt(String debtId) {
-    Get.toNamed(AppRoutes.editDebt, arguments: {'debtId': debtId});
-  }
-
-  // التنقل لقائمة المدفوعات
-  static void toPayments() {
-    Get.toNamed(AppRoutes.payments);
-  }
-
-  // التنقل لإضافة دفعة جديدة
-  static void toAddPayment({String? debtId}) {
-    Get.toNamed(AppRoutes.addPayment,
-        arguments: debtId != null ? {'debtId': debtId} : null);
-  }
-
-  // التنقل لتفاصيل الدفعة
-  static void toPaymentDetails(String paymentId) {
-    Get.toNamed(AppRoutes.paymentDetails, arguments: {'paymentId': paymentId});
-  }
-
-  // التنقل لتعديل الدفعة
-  static void toEditPayment(String paymentId) {
-    Get.toNamed(AppRoutes.editPayment, arguments: {'paymentId': paymentId});
-  }
-
-  // التنقل لقائمة التقارير
-  static void toReports() {
-    Get.toNamed(AppRoutes.reports);
-  }
-
-  // التنقل للتقرير اليومي
-  static void toDailyReport() {
-    Get.toNamed(AppRoutes.dailyReport);
-  }
-
-  // التنقل للتقرير الشهري
-  static void toMonthlyReport() {
-    Get.toNamed(AppRoutes.monthlyReport);
-  }
-
-  // التنقل للتقرير المخصص
-  static void toCustomReport() {
-    Get.toNamed(AppRoutes.customReport);
-  }
-
-  // التنقل للإعدادات
-  static void toSettings() {
-    Get.toNamed(AppRoutes.settings);
-  }
-
-  // التنقل لإعدادات الملف الشخصي
-  static void toProfileSettings() {
-    Get.toNamed(AppRoutes.profile);
-  }
-
-  // التنقل لإعدادات الأمان
-  static void toSecuritySettings() {
-    Get.toNamed('/security-settings');
-  }
-
-  // التنقل للإشعارات
-  static void toNotifications() {
-    Get.toNamed(AppRoutes.notifications);
-  }
-
-  // التنقل لشاشة انتهاء الاشتراك
-  static void toSubscriptionExpired() {
-    Get.offAllNamed(AppRoutes.subscriptionExpired);
-  }
-
-  // العودة للخلف مع التحقق من وجود صفحات سابقة
-  static void goBack() {
-    if (Navigator.canPop(Get.context!)) {
-      Get.back();
-    } else {
-      Get.offAllNamed(AppRoutes.home);
-    }
-  }
-
-  // التنقل مع استبدال الصفحة الحالية
-  static void toReplacement(String route, {dynamic arguments}) {
-    Get.offNamed(route, arguments: arguments);
-  }
-
-  // التنقل مع مسح جميع الصفحات السابقة
-  static void toAndClearAll(String route, {dynamic arguments}) {
-    Get.offAllNamed(route, arguments: arguments);
-  }
-
-  // التحقق من إمكانية العودة
-  static bool canGoBack() {
-    return Navigator.canPop(Get.context!);
-  }
-
-  // الحصول على المسار الحالي
-  static String getCurrentRoute() {
-    return Get.currentRoute;
-  }
-
-  // الحصول على المعاملات المرسلة للصفحة
-  static dynamic getArguments() {
-    return Get.arguments;
-  }
-
-  // الحصول على معامل محدد
-  static T? getArgument<T>(String key) {
-    final args = Get.arguments;
-    if (args is Map<String, dynamic>) {
-      return args[key] as T?;
-    }
-    return null;
-  }
-
-  // التحقق من وجود معامل
-  static bool hasArgument(String key) {
-    final args = Get.arguments;
-    if (args is Map<String, dynamic>) {
-      return args.containsKey(key);
-    }
-    return false;
-  }
 }
 
-// شاشة 404 - الصفحة غير موجودة
+// شاشة 404 محسنة
 class NotFoundScreen extends StatelessWidget {
   const NotFoundScreen({super.key});
 
@@ -946,7 +751,7 @@ class NotFoundScreen extends StatelessWidget {
         title: const Text('الصفحة غير موجودة'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => AppPages.toHome(),
+          onPressed: () => Get.offAllNamed(AppRoutes.home),
         ),
       ),
       body: Center(
@@ -986,7 +791,7 @@ class NotFoundScreen extends StatelessWidget {
             ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
-              onPressed: () => AppPages.toHome(),
+              onPressed: () => Get.offAllNamed(AppRoutes.home),
               icon: const Icon(Icons.home),
               label: const Text('العودة للرئيسية'),
             ),
@@ -994,63 +799,5 @@ class NotFoundScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-// Middleware للتحقق من المصادقة
-class AuthMiddleware extends GetMiddleware {
-  @override
-  RouteSettings? redirect(String? route) {
-    // قائمة المسارات التي لا تحتاج مصادقة
-    final publicRoutes = [
-      AppRoutes.splash,
-      AppRoutes.login,
-      AppRoutes.register,
-      AppRoutes.forgotPassword,
-      AppRoutes.contactSupport,
-      AppRoutes.subscriptionExpired,
-    ];
-
-    // إذا كان المسار عام، السماح بالوصول
-    if (publicRoutes.contains(route)) {
-      return null;
-    }
-
-    // التحقق من تسجيل الدخول (يمكن تحسينه لاحقاً)
-    // if (!AuthService.isLoggedIn()) {
-    //   return const RouteSettings(name: AppRoutes.login);
-    // }
-
-    return null;
-  }
-}
-
-// Middleware للتحقق من الاشتراك
-class SubscriptionMiddleware extends GetMiddleware {
-  @override
-  RouteSettings? redirect(String? route) {
-    // قائمة المسارات التي لا تحتاج اشتراك
-    final freeRoutes = [
-      AppRoutes.splash,
-      AppRoutes.login,
-      AppRoutes.register,
-      AppRoutes.forgotPassword,
-      AppRoutes.contactSupport,
-      AppRoutes.subscriptionExpired,
-      AppRoutes.subscription,
-      AppRoutes.subscriptionInfo,
-    ];
-
-    // إذا كان المسار مجاني، السماح بالوصول
-    if (freeRoutes.contains(route)) {
-      return null;
-    }
-
-    // التحقق من الاشتراك (يمكن تحسينه لاحقاً)
-    // if (subscription expired) {
-    //   return const RouteSettings(name: AppRoutes.subscriptionExpired);
-    // }
-
-    return null;
   }
 }
