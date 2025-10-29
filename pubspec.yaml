@@ -1,9 +1,9 @@
 name: dayen_madeen
 description: نظام إدارة الديون الاحترافي
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: '>=3.1.0 <4.0.0'
   flutter: ">=3.24.0"
 
 dependencies:
@@ -15,69 +15,66 @@ dependencies:
   get_storage: ^2.1.1
 
   # التصميم والواجهة
-  google_fonts: ^6.1.0          # للخطوط العربية (Cairo, Tajawal)
-  flutter_svg: ^2.0.9           # للأيقونات المخصصة SVG
+  google_fonts: ^6.2.1          # للخطوط العربية (Cairo, Tajawal) - محدث
+  flutter_svg: ^2.0.10          # للأيقونات المخصصة SVG - محدث
 
   # المصادقة والأمان
-  local_auth:
+  local_auth: ^2.1.8            # تحديد إصدار محدد
   crypto: ^3.0.3                # تشفير البيانات المحلية
 
   # الطباعة والتصدير
-  printing: ^5.11.0             # طباعة المستندات
-  share_plus: ^7.2.1            # مشاركة الملفات
+  printing: ^5.12.0             # طباعة المستندات - محدث
+  share_plus: ^7.2.2            # مشاركة الملفات - محدث
 
-  # الرسوم البيانية والتقارير
-  # fl_chart: ^0.64.0             # رسوم بيانية تفاعلية (تم إلغاؤها)
-
-  # قاعدة البيانات والتخزين
-  sqflite: ^2.3.0              # قاعدة بيانات SQLite (مفعّل مؤقتًا حتى اكتمال الترحيل)
-  path: ^1.8.3                 # مسارات الملفات
-  uuid: ^4.1.0                 # معرفات فريدة
+  # قاعدة البيانات والتخزين (Firebase فقط)
+  uuid: ^4.2.2                  # معرفات فريدة - محدث
 
   # التحقق والتصديق
   email_validator: ^2.1.17     # التحقق من البريد الإلكتروني
 
-
   # التصدير والاستيراد
-  excel: ^2.1.0                # ملفات Excel
-  csv: ^5.0.2                  # ملفات CSV
-  file_picker: ^10.3.2          # اختيار الملفات
-  permission_handler: ^11.1.0  # أذونات النظام
-  path_provider: ^2.1.1        # مسارات النظام
+  excel: ^4.0.6                # ملفات Excel - محدث
+  csv: ^6.0.0                  # ملفات CSV - محدث
+  file_picker: ^8.0.0+1        # اختيار الملفات - محدث
+  permission_handler: ^11.3.1  # أذونات النظام - محدث
+  path_provider: ^2.1.2        # مسارات النظام - محدث
 
   # معلومات الجهاز
-  device_info_plus: ^9.1.1      # معرف الجهاز الفريد
-  connectivity_plus: ^5.0.2     # فحص حالة الاتصال بالإنترنت
+  device_info_plus: ^10.1.2     # معرف الجهاز الفريد - محدث
+  connectivity_plus: ^6.0.5     # فحص حالة الاتصال بالإنترنت - محدث
 
   # أدوات مساعدة
-  intl: ^0.18.1                 # دعم التواريخ والأرقام العربية
-  url_launcher: ^6.2.2          # فتح الروابط والتطبيقات الخارجية
-  image_picker: ^1.0.4          # اختيار الصور
-  pdf: ^3.10.7                  # إنشاء ملفات PDF
-  # أيقونات إضافية
-  cupertino_icons: ^1.0.6       # أيقونات iOS
+  intl: ^0.19.0                 # دعم التواريخ والأرقام العربية - محدث
+  url_launcher: ^6.2.5          # فتح الروابط والتطبيقات الخارجية - محدث
+  image_picker: ^1.0.7          # اختيار الصور - محدث
+  pdf: ^3.10.8                  # إنشاء ملفات PDF - محدث
+  cupertino_icons: ^1.0.8       # أيقونات iOS - محدث
 
   # مكتبات إضافية للنظام المركزي
-  flutter_colorpicker: ^1.0.3   # منتقي الألوان (للإعدادات المتقدمة)
+  flutter_colorpicker: ^1.1.0   # منتقي الألوان - محدث
   
-  # Firebase
-  firebase_core: ^3.4.0
-  firebase_auth: ^5.1.4
-  cloud_firestore: ^5.3.0
+  # Firebase (محدث لأحدث الإصدارات)
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.3
   firebase_messaging: ^15.1.3
   flutter_local_notifications: ^17.2.3
   
   # Error tracking and monitoring
-  sentry_flutter: ^8.8.0
+  sentry_flutter: ^8.9.0        # محدث
+  
+  # إضافة مكتبات جديدة للتحسين
+  cached_network_image: ^3.3.1  # تحسين تحميل الصور
+  shimmer: ^3.0.0               # تحسين تجربة التحميل
+  lottie: ^3.1.2                # رسوم متحركة للتحميل
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.1
-
-  # أدوات التطوير
-  build_runner: ^2.4.7          # لتوليد الكود
-  json_annotation: ^4.8.1       # للتعامل مع JSON
+  flutter_lints: ^4.0.0         # محدث
+  mockito: ^5.4.4               # إضافة مكتبة للاختبارات
+  build_runner: ^2.4.13         # لتوليد الكود - محدث
+  json_annotation: ^4.9.0       # للتعامل مع JSON - محدث
 
 flutter:
   uses-material-design: true
@@ -88,9 +85,14 @@ flutter:
     - assets/icons/
     - assets/logos/
     - assets/fonts/
+    - assets/animations/         # مجلد جديد للرسوم المتحركة
 
   # الخطوط المخصصة
   fonts:
     - family: Cairo
       fonts:
         - asset: assets/fonts/Cairo-Regular.ttf
+        - asset: assets/fonts/Cairo-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Cairo-Light.ttf
+          weight: 300
