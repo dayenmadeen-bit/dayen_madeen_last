@@ -35,6 +35,15 @@ class AppTextStyles {
     color: AppColors.textPrimaryLight,
     height: 1.2,
   );
+  
+  // === إضافة headlineLarge المفقود - 🔧 إصلاح ===
+  static TextStyle get headlineLarge => GoogleFonts.cairo(
+    fontSize: fontSizeDisplay, // 32px
+    fontWeight: fontWeightBold,
+    color: AppColors.textPrimaryLight,
+    height: 1.2,
+  );
+  // === نهاية الإضافة ===
 
   static TextStyle get headlineMedium => GoogleFonts.cairo(
     fontSize: fontSizeHeading,
