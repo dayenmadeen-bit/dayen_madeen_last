@@ -91,6 +91,20 @@ class Customer {
     );
   }
 
+  // === إضافة Methods المفقودة للتوافق مع Firebase ===
+  
+  /// تحويل إلى Map - 🔧 إصلاح
+  Map<String, dynamic> toMap() {
+    return toJson(); // استخدام toJson الموجود
+  }
+
+  /// إنشاء من Map - 🔧 إصلاح  
+  factory Customer.fromMap(Map<String, dynamic> map) {
+    return Customer.fromJson(map); // استخدام fromJson الموجود
+  }
+  
+  // === نهاية الإضافة ===
+
   // تحويل إلى JSON
   Map<String, dynamic> toJson() {
     return {
