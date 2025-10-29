@@ -35,6 +35,11 @@ class AppIcons {
   static const IconData people = Icons.people_rounded;
   static const IconData moreVert = Icons.more_vert_rounded;
   static const IconData work = Icons.work_rounded;
+  
+  // === إضافة الأيقونات المفقودة ===
+  static const IconData expandMore = Icons.expand_more; // 🔧 إصلاح
+  static const IconData expandLess = Icons.expand_less;
+  static const IconData emailVerification = Icons.mark_email_read; // 🔧 إصلاح
 
   // ===== أيقونات الحالة =====
   static const IconData success = Icons.check_circle_rounded;
