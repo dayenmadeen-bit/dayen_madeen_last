@@ -115,19 +115,41 @@ class SmartNotificationService extends GetxService {
     LoggerService.info('تم بدء نظام الإشعارات الذكي');
   }
 
+  /// ارجاع مرجع مجموعة الديون مع ownerId
+  CollectionReference<Map<String, dynamic>> _debtsCol(String ownerId) {
+    return _firestoreService.debtsCol(ownerId);
+  }
+
+  /// ارجاع مرجع مجموعة المدفوعات مع ownerId
+  CollectionReference<Map<String, dynamic>> _paymentsCol(String ownerId) {
+    return _firestoreService.paymentsCol(ownerId);
+  }
+
+  /// الحصول على معرف المالك الحالي
+  String? _currentOwnerId() {
+    try {
+      final user = Get.find<FirebaseIntegrationService>().currentUser; // يتطلب استيراد الخدمة إذا لزم
+      return user?.uid;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// فحص الديون المتأخرة
   Future<void> _checkOverdueDebts() async {
     try {
       final now = DateTime.now();
-      final querySnapshot = await _firestoreService
-          .debtsCol()
+      final ownerId = _currentOwnerId();
+      if (ownerId == null) return;
+
+      final querySnapshot = await _debtsCol(ownerId)
           .where('status', whereIn: ['pending', 'partially_paid'])
           .where('dueDate', isLessThan: Timestamp.fromDate(now))
           .limit(50)
           .get();
 
       final overdueList = querySnapshot.docs
-          .map((doc) => Debt.fromFirestore(doc.data(), doc.id))
+          .map((doc) => Debt.fromFirestore(doc))
           .toList();
 
       _overdueDebts.value = overdueList;
@@ -146,11 +168,13 @@ class SmartNotificationService extends GetxService {
   /// فحص الدفعات القريبة الاستحقاق
   Future<void> _checkUpcomingPayments() async {
     try {
+      final ownerId = _currentOwnerId();
+      if (ownerId == null) return;
+
       final tomorrow = DateTime.now().add(const Duration(days: 1));
       final nextWeek = DateTime.now().add(const Duration(days: 7));
       
-      final querySnapshot = await _firestoreService
-          .debtsCol()
+      final querySnapshot = await _debtsCol(ownerId)
           .where('status', whereIn: ['pending', 'partially_paid'])
           .where('dueDate', isGreaterThanOrEqualTo: Timestamp.fromDate(tomorrow))
           .where('dueDate', isLessThanOrEqualTo: Timestamp.fromDate(nextWeek))
@@ -158,7 +182,7 @@ class SmartNotificationService extends GetxService {
           .get();
 
       final upcomingList = querySnapshot.docs
-          .map((doc) => Debt.fromFirestore(doc.data(), doc.id))
+          .map((doc) => Debt.fromFirestore(doc))
           .toList();
 
       _upcomingPayments.value = upcomingList;
@@ -191,12 +215,9 @@ class SmartNotificationService extends GetxService {
       );
 
       // إشعار محلي
-      await _notificationService.showNotification(
-        id: 'overdue_debts',
+      await NotificationService.showNotification(
         title: title,
         body: body,
-        icon: AppIcons.warning,
-        color: AppColors.error,
       );
 
       LoggerService.info('تم إرسال إشعار الديون المتأخرة');
@@ -220,12 +241,9 @@ class SmartNotificationService extends GetxService {
       );
 
       // إشعار محلي
-      await _notificationService.showNotification(
-        id: 'upcoming_payments',
+      await NotificationService.showNotification(
         title: title,
         body: body,
-        icon: AppIcons.time,
-        color: AppColors.info,
       );
 
       LoggerService.info('تم إرسال إشعار الدفعات القريبة');
@@ -237,21 +255,22 @@ class SmartNotificationService extends GetxService {
   /// إرسال ملخص يومي
   Future<void> _sendDailySummary() async {
     try {
+      final ownerId = _currentOwnerId();
+      if (ownerId == null) return;
+
       // حساب إحصائيات اليوم
       final today = DateTime.now();
       final startOfDay = DateTime(today.year, today.month, today.day);
       final endOfDay = startOfDay.add(const Duration(days: 1));
 
       // ديون اليوم
-      final todayDebtsQuery = await _firestoreService
-          .debtsCol()
+      final todayDebtsQuery = await _debtsCol(ownerId)
           .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
           .where('createdAt', isLessThan: Timestamp.fromDate(endOfDay))
           .get();
 
       // مدفوعات اليوم
-      final todayPaymentsQuery = await _firestoreService
-          .paymentsCol()
+      final todayPaymentsQuery = await _paymentsCol(ownerId)
           .where('paymentDate', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
           .where('paymentDate', isLessThan: Timestamp.fromDate(endOfDay))
           .get();
@@ -271,12 +290,9 @@ class SmartNotificationService extends GetxService {
           action: () => Get.toNamed('/reports/daily'),
         );
 
-        await _notificationService.showNotification(
-          id: 'daily_summary',
+        await NotificationService.showNotification(
           title: title,
           body: body,
-          icon: AppIcons.analytics,
-          color: AppColors.info,
         );
       }
 
@@ -409,12 +425,9 @@ class SmartNotificationService extends GetxService {
       action: action,
     );
 
-    await _notificationService.showNotification(
-      id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+    await NotificationService.showNotification(
       title: title,
       body: message,
-      icon: AppIcons.info,
-      color: AppColors.primary,
     );
   }
 }
