@@ -69,15 +69,15 @@ class UniqueIdPopup {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  primaryColor.withValues(alpha: 0.1),
+                  primaryColor.withOpacity(0.1),
                   Colors.white,
-                  primaryColor.withValues(alpha: 0.05),
+                  primaryColor.withOpacity(0.05),
                 ],
               ),
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
+                  color: Colors.black.withOpacity(0.1),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -92,7 +92,7 @@ class UniqueIdPopup {
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [primaryColor, primaryColor.withValues(alpha: 0.8)],
+                      colors: [primaryColor, primaryColor.withOpacity(0.8)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -119,7 +119,7 @@ class UniqueIdPopup {
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.white.withValues(alpha: 0.3),
+                                    color: Colors.white.withOpacity(0.3),
                                     blurRadius: 10,
                                     spreadRadius: 5,
                                   ),
@@ -174,13 +174,13 @@ class UniqueIdPopup {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              primaryColor.withValues(alpha: 0.1),
-                              primaryColor.withValues(alpha: 0.05),
+                              primaryColor.withOpacity(0.1),
+                              primaryColor.withOpacity(0.05),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: primaryColor.withValues(alpha: 0.3),
+                            color: primaryColor.withOpacity(0.3),
                             width: 1.5,
                           ),
                         ),
@@ -214,7 +214,7 @@ class UniqueIdPopup {
                                   child: Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color: primaryColor.withValues(alpha: 0.1),
+                                      color: primaryColor.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Icon(
@@ -236,10 +236,10 @@ class UniqueIdPopup {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha: 0.1),
+                          color: AppColors.warning.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: AppColors.warning.withValues(alpha: 0.3),
+                            color: AppColors.warning.withOpacity(0.3),
                           ),
                         ),
                         child: Row(
@@ -264,7 +264,7 @@ class UniqueIdPopup {
                       ),
 
                       // عرض معلومات إضافية إذا توفرت
-                      if (userEmail != null || userName != null) ..[
+                      if (userEmail != null || userName != null) ...[
                         const SizedBox(height: 16),
                         Container(
                           width: double.infinity,
@@ -273,13 +273,13 @@ class UniqueIdPopup {
                             color: Colors.grey[50],
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: Colors.grey.withValues(alpha: 0.3),
+                              color: Colors.grey.withOpacity(0.3),
                             ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              if (userName != null) ..[
+                              if (userName != null) ...[
                                 Text('الاسم: $userName',
                                     style: AppTextStyles.bodySmall),
                                 const SizedBox(height: 4),
@@ -302,7 +302,7 @@ class UniqueIdPopup {
                             flex: 2,
                             child: OutlinedButton.icon(
                               onPressed: () => _copyToClipboard(uniqueId, primaryColor),
-                              icon: Icon(Icons.copy, size: 18),
+                              icon: const Icon(Icons.copy, size: 18),
                               label: const Text('نسخ الرقم'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: primaryColor,
