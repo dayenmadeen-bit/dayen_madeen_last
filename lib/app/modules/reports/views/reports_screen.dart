@@ -220,17 +220,6 @@ class ReportsScreen extends GetView<ReportsController> {
 
         const SizedBox(height: 12),
 
-        // التقرير الشهري
-        _buildReportTypeCard(
-          'التقرير الشهري',
-          'عرض إحصائيات الشهر الحالي مع الرسوم البيانية',
-          AppIcons.analytics,
-          AppColors.success,
-          () => Get.toNamed('/monthly-report'),
-        ),
-
-        const SizedBox(height: 12),
-
         // التقرير المخصص
         _buildReportTypeCard(
           'التقرير المخصص',
@@ -238,6 +227,50 @@ class ReportsScreen extends GetView<ReportsController> {
           AppIcons.settings,
           AppColors.info,
           () => Get.toNamed('/custom-report'),
+        ),
+
+        const SizedBox(height: 12),
+
+        // رسالة للتقارير المستقبلية
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: AppDecorations.cardDecoration.copyWith(
+            border: Border.all(
+              color: AppColors.info.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                AppIcons.info,
+                color: AppColors.info,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'تقارير إضافية قريباً',
+                      style: AppTextStyles.titleMedium.copyWith(
+                        color: AppColors.info,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'التقارير الشهرية والسنوية ستتوفر في التحديثات القادمة',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondaryLight,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
