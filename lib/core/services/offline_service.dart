@@ -29,9 +29,11 @@ class OfflineService extends GetxService {
 
   // تهيئة مستمع الاتصال
   void _initConnectivityListener() {
-    // فحص الاتصال الحقيقي
-    _connectivity.onConnectivityChanged.listen((ConnectivityResult result) {
-      _isOnline.value = result != ConnectivityResult.none;
+    // فحص الاتصال الحقيقي - 🔧 إصلاح توقيع Callback
+    _connectivity.onConnectivityChanged.listen((List<ConnectivityResult> results) {
+      // فحص إذا كان هناك أي اتصال فعال
+      final hasConnection = results.any((result) => result != ConnectivityResult.none);
+      _isOnline.value = hasConnection;
 
       if (_isOnline.value) {
         LoggerService.info('تم استعادة الاتصال بالإنترنت');
@@ -61,6 +63,87 @@ class OfflineService extends GetxService {
   void _loadOfflineMode() {
     _isOfflineMode.value = StorageService.getBool('offline_mode') ?? false;
   }
+  
+  // === ملحوقة attemptOfflineLogin - 🔧 إصلاح ===
+  
+  /// محاولة تسجيل دخول أوفلاين - 🔧 إصلاح
+  Future<Map<String, dynamic>?> attemptOfflineLogin({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      LoggerService.info('🔒 محاولة تسجيل دخول أوفلاين...');
+      
+      // تحقق من بيانات محفوظة محلياً
+      final cachedCredentials = StorageService.getJson('cached_login');
+      
+      if (cachedCredentials != null) {
+        final cachedEmail = cachedCredentials['email'] as String?;
+        final cachedPasswordHash = cachedCredentials['passwordHash'] as String?;
+        final userData = cachedCredentials['userData'] as Map<String, dynamic>?;
+        
+        // تحقق بسيط من البيانات
+        if (cachedEmail == email && cachedPasswordHash != null && userData != null) {
+          final passwordHash = _hashPassword(password); 
+          
+          if (passwordHash == cachedPasswordHash) {
+            LoggerService.success('✅ نجح تسجيل الدخول أوفلاين');
+            return {
+              'success': true,
+              'user': userData,
+              'offline': true,
+            };
+          }
+        }
+      }
+      
+      LoggerService.warning('⚠️ لا توجد بيانات محفوظة لتسجيل الدخول أوفلاين');
+      return null;
+      
+    } catch (e) {
+      LoggerService.error('خطأ في محاولة الدخول أوفلاين', error: e);
+      return null;
+    }
+  }
+  
+  /// حفظ بيانات تسجيل الدخول للاستخدام أوفلاين
+  Future<void> cacheLoginCredentials({
+    required String email,
+    required String password,
+    required Map<String, dynamic> userData,
+  }) async {
+    try {
+      final passwordHash = _hashPassword(password);
+      
+      await StorageService.setJson('cached_login', {
+        'email': email,
+        'passwordHash': passwordHash,
+        'userData': userData,
+        'cachedAt': DateTime.now().toIso8601String(),
+      });
+      
+      LoggerService.info('💾 تم حفظ بيانات الدخول للاستخدام أوفلاين');
+    } catch (e) {
+      LoggerService.error('خطأ في حفظ بيانات الدخول', error: e);
+    }
+  }
+  
+  /// مسح بيانات تسجيل الدخول المحفوظة
+  Future<void> clearCachedLogin() async {
+    try {
+      await StorageService.remove('cached_login');
+      LoggerService.info('🗑️ تم مسح بيانات الدخول المحفوظة');
+    } catch (e) {
+      LoggerService.error('خطأ في مسح بيانات الدخول', error: e);
+    }
+  }
+
+  /// تشفير بسيط لكلمة المرور (للاختبار)
+  String _hashPassword(String password) {
+    return password.hashCode.toString();
+  }
+  
+  // === نهاية الإضافة ===
 
   // تفعيل وضع الأوفلاين
   Future<void> enableOfflineMode() async {
