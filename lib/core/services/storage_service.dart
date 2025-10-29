@@ -65,6 +65,41 @@ class StorageService {
     return _storage.read(key);
   }
 
+  // حفظ خريطة
+  static Future<void> setMap(String key, Map<String, dynamic> value) async {
+    await _storage.write(key, jsonEncode(value));
+  }
+
+  // قراءة خريطة
+  static Map<String, dynamic>? getMap(String key) {
+    final jsonString = _storage.read(key);
+    if (jsonString != null) {
+      try {
+        return jsonDecode(jsonString);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+  
+  // === إضافة الطرق المفقودة ===
+  
+  /// حفظ بيانات JSON - 🔧 إصلاح
+  static Future<void> setJson(String key, Map<String, dynamic> value) async {
+    await setMap(key, value);
+  }
+
+  /// قراءة بيانات JSON - 🔧 إصلاح
+  static Map<String, dynamic>? getJson(String key) {
+    return getMap(key);
+  }
+  
+  /// حذف جميع البيانات - 🔧 إصلاح
+  static Future<void> clearAllData() async {
+    await clear();
+  }
+
   // الحصول على حجم التخزين المستخدم (تقديري)
   static int getStorageSize() {
     // حساب تقديري لحجم البيانات المحفوظة
@@ -88,24 +123,6 @@ class StorageService {
     }
 
     return totalSize;
-  }
-
-  // حفظ خريطة
-  static Future<void> setMap(String key, Map<String, dynamic> value) async {
-    await _storage.write(key, jsonEncode(value));
-  }
-
-  // قراءة خريطة
-  static Map<String, dynamic>? getMap(String key) {
-    final jsonString = _storage.read(key);
-    if (jsonString != null) {
-      try {
-        return jsonDecode(jsonString);
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
   }
 
   // ===== عمليات متقدمة =====
